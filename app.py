@@ -2,9 +2,16 @@ import os
 from flask import Flask, request, render_template, redirect, url_for, session
 import sqlite3
 from datetime import datetime, timedelta
+import logging
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Use environment variable for secret key
+
+if not app.debug:
+    # In production mode, add log handler to sys.stderr.
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    app.logger.addHandler(stream_handler)
 
 def get_db_connection():
     conn = sqlite3.connect('database.db')
