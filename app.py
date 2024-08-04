@@ -28,51 +28,61 @@ def index():
 
 @app.route('/select-date', methods=['POST'])
 def select_date():
-    name = request.form['name'].strip().lower()
-    conn = get_db_connection()
-    volunteer = conn.execute('SELECT * FROM volunteers WHERE LOWER(name) = ?', (name,)).fetchone()
-    if volunteer is None:
+    try:
+        name = request.form['name'].strip().lower()
+        conn = get_db_connection()
+        volunteer = conn.execute('SELECT * FROM volunteers WHERE LOWER(name) = ?', (name,)).fetchone()
+        if volunteer is None:
+            conn.close()
+            return f"There is no record of volunteer '{request.form['name']}' in our database. Please double check your spelling or stop lying.", 404
+
+        sessions = conn.execute('SELECT DISTINCT date FROM sessions WHERE volunteer_id = ?', (volunteer['id'],)).fetchall()
         conn.close()
-        return f"There is no record of volunteer '{request.form['name']}' in our database. Please double check your spelling or stop lying.", 404
 
-    sessions = conn.execute('SELECT DISTINCT date FROM sessions WHERE volunteer_id = ?', (volunteer['id'],)).fetchall()
-    conn.close()
-
-    if not sessions:
-        return f"There is no record of '{request.form['name']}' volunteering on any dates in our database. Please double check your spelling or stop lying.", 404
-    
-    return render_template('select_date.html', name=volunteer['name'], sessions=sessions)
+        if not sessions:
+            return f"There is no record of '{request.form['name']}' volunteering on any dates in our database. Please double check your spelling or stop lying.", 404
+        
+        return render_template('select_date.html', name=volunteer['name'], sessions=sessions)
+    except Exception as e:
+        app.logger.error(f"Error on /select-date route: {e}")
+        app.logger.error(traceback.format_exc())
+        return "Internal Server Error", 500
 
 @app.route('/get-certificate', methods=['POST'])
 def get_certificate():
-    name = request.form['name'].strip().lower()
-    date = request.form['date'].strip()
-    conn = get_db_connection()
-    volunteer = conn.execute('SELECT * FROM volunteers WHERE LOWER(name) = ?', (name,)).fetchone()
-    if volunteer is None:
+    try:
+        name = request.form['name'].strip().lower()
+        date = request.form['date'].strip()
+        conn = get_db_connection()
+        volunteer = conn.execute('SELECT * FROM volunteers WHERE LOWER(name) = ?', (name,)).fetchone()
+        if volunteer is None:
+            conn.close()
+            return f"There is no record of volunteer '{request.form['name']}' in our database. Please double check your spelling or stop lying.", 404
+
+        sessions = conn.execute('SELECT * FROM sessions WHERE volunteer_id = ? AND date = ?', (volunteer['id'], date)).fetchall()
         conn.close()
-        return f"There is no record of volunteer '{request.form['name']}' in our database. Please double check your spelling or stop lying.", 404
+        
+        if not sessions:
+            return f"There is no record of '{request.form['name']}' volunteering during '{date}' in our database. Please double check the date or stop lying.", 404
+        
+        total_hours = 0
+        for session in sessions:
+            start_time = datetime.strptime(session['start_time'], '%I:%M %p')
+            end_time = datetime.strptime(session['end_time'], '%I:%M %p')
+            # Calculate difference in hours, considering crossing over midnight
+            if end_time < start_time:
+                end_time += timedelta(days=1)
+            total_hours += (end_time - start_time).seconds / 3600
+        
+        total_hours = round(total_hours, 2)  # Round to 2 decimal places
 
-    sessions = conn.execute('SELECT * FROM sessions WHERE volunteer_id = ? AND date = ?', (volunteer['id'], date)).fetchall()
-    conn.close()
-    
-    if not sessions:
-        return f"There is no record of '{request.form['name']}' volunteering during '{date}' in our database. Please double check the date or stop lying.", 404
-    
-    total_hours = 0
-    for session in sessions:
-        start_time = datetime.strptime(session['start_time'], '%I:%M %p')
-        end_time = datetime.strptime(session['end_time'], '%I:%M %p')
-        # Calculate difference in hours, considering crossing over midnight
-        if end_time < start_time:
-            end_time += timedelta(days=1)
-        total_hours += (end_time - start_time).seconds / 3600
-    
-    total_hours = round(total_hours, 2)  # Round to 2 decimal places
+        formatted_name = format_name(volunteer['name'])
 
-    formatted_name = format_name(volunteer['name'])
-
-    return render_template('certificate.html', name=formatted_name, date=date, hours=total_hours)
+        return render_template('certificate.html', name=formatted_name, date=date, hours=total_hours)
+    except Exception as e:
+        app.logger.error(f"Error on /get-certificate route: {e}")
+        app.logger.error(traceback.format_exc())
+        return "Internal Server Error", 500
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
