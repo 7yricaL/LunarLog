@@ -15,9 +15,51 @@ if not app.debug:
     app.logger.addHandler(stream_handler)
 
 def get_db_connection():
-    conn = sqlite3.connect('database.db')
+    # Use the /tmp directory for the database to ensure it's writable
+    db_path = '/tmp/database.db'
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
+
+def initialize_db():
+    db_path = '/tmp/database.db'
+    if not os.path.exists(db_path):
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Create volunteers table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS volunteers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL
+            )
+        ''')
+        
+        # Create sessions table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                volunteer_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                FOREIGN KEY(volunteer_id) REFERENCES volunteers(id)
+            )
+        ''')
+        
+        # Create current_sessions table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS current_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                volunteer_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                FOREIGN KEY(volunteer_id) REFERENCES volunteers(id)
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
 
 def format_name(name):
     return ' '.join(word.capitalize() for word in name.split())
@@ -220,5 +262,8 @@ def delete_volunteer():
         return "Internal Server Error", 500
 
 if __name__ == "__main__":
+    # Initialize the database
+    initialize_db()
+    
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
