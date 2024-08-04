@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Session</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        .session-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .end-time-input {
+            margin-left: 10px;
+        }
+        .required-asterisk {
+            color: red;
+            margin-left: 2px;
+        }
+        .error-message {
+            color: red;
+            display: none;
+            margin-top: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Add Session</h1>
+    <form id="add-session-form" action="/add-session" method="post" onsubmit="return validateAddSessionForm()">
+        <label for="volunteer_name">Volunteer Name<span class="required-asterisk">*</span>:</label>
+        <input type="text" id="volunteer_name" name="volunteer_name" required><br>
+        <label for="date">Date<span class="required-asterisk">*</span>:</label>
+        <input type="text" id="date" name="date" class="datepicker" required><br>
+        <label for="start_time">Start Time<span class="required-asterisk">*</span>:</label>
+        <input type="text" id="start_time" name="start_time" class="timepicker" required><br>
+        <label for="end_time">End Time:</label>
+        <input type="text" id="end_time" name="end_time" class="timepicker"><br>
+        <button type="submit">Add Session</button>
+        <div class="error-message" id="add-session-error-message">Please fill out all required fields.</div>
+    </form>
+
+    <div id="current-sessions-container" class="{% if not current_sessions %}hidden{% endif %}">
+        <h2>Current Sessions</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Volunteer Name</th>
+                    <th>Date</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in current_sessions %}
+                <tr>
+                    <td>{{ session.name }}</td>
+                    <td>{{ session.date }}</td>
+                    <td>{{ session.start_time }}</td>
+                    <td>
+                        <form action="/complete-session" method="post" class="session-actions" onsubmit="return validateCompleteSessionForm({{ session.id }})">
+                            <input type="hidden" name="session_id" value="{{ session.id }}">
+                            <input type="text" name="end_time" id="end_time_{{ session.id }}" class="timepicker end-time-input" required>
+                            <button type="submit">Complete</button>
+                            <div class="error-message" id="complete-session-error-message-{{ session.id }}">Please fill in the end time.</div>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        flatpickr(".datepicker", {
+            dateFormat: "Y-m-d"
+        });
+        flatpickr(".timepicker", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "h:i K",
+            time_24hr: false
+        });
+
+        function validateAddSessionForm() {
+            const volunteerName = document.getElementById('volunteer_name').value.trim();
+            const date = document.getElementById('date').value.trim();
+            const startTime = document.getElementById('start_time').value.trim();
+            const errorMessage = document.getElementById('add-session-error-message');
+
+            if (!volunteerName || !date || !startTime) {
+                errorMessage.style.display = 'block';
+                return false;
+            }
+            errorMessage.style.display = 'none';
+            return true;
+        }
+
+        function validateCompleteSessionForm(sessionId) {
+            const endTime = document.getElementById('end_time_' + sessionId).value.trim();
+            const errorMessage = document.getElementById('complete-session-error-message-' + sessionId);
+
+            if (!endTime) {
+                errorMessage.style.display = 'block';
+                return false;
+            }
+            errorMessage.style.display = 'none';
+            return true;
+        }
+    </script>
+</body>
+</html>

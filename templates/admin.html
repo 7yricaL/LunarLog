@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Page</title>
+    <style>
+        .session-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .delete-volunteer-btn {
+            margin-top: 10px;
+        }
+        .end-time-input {
+            margin-left: 10px;
+        }
+        .required-asterisk {
+            color: red;
+            margin-left: 2px;
+        }
+        .error-message {
+            color: red;
+            display: none;
+            margin-top: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+        .end-time-column {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin Page</h1>
+    <a href="/add-session">Add Session</a>
+    <h2>Logged Volunteers and Sessions</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Sessions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for volunteer in volunteers %}
+            <tr>
+                <td>
+                    {{ volunteer.name }}
+                    <form action="/delete-volunteer" method="post" class="delete-volunteer-btn">
+                        <input type="hidden" name="volunteer_id" value="{{ volunteer.id }}">
+                        <button type="submit">Delete Volunteer</button>
+                    </form>
+                </td>
+                <td>
+                    <ul>
+                        {% for session in sessions %}
+                        {% if session.volunteer_id == volunteer.id %}
+                        <li>
+                            {{ session.date }}: {{ session.start_time }} - {{ session.end_time }}
+                            <form action="/delete-session" method="post" style="display: inline;">
+                                <input type="hidden" name="session_id" value="{{ session.id }}">
+                                <button type="submit">Delete Session</button>
+                            </form>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div id="current-sessions-container-admin" class="{% if not current_sessions %}hidden{% endif %}">
+        <h2>Current Sessions</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Volunteer Name</th>
+                    <th>Date</th>
+                    <th>Start Time</th>
+                    <th class="end-time-column">End Time</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in current_sessions %}
+                <tr>
+                    <td>{{ session.name }}</td>
+                    <td>{{ session.date }}</td>
+                    <td>{{ session.start_time }}</td>
+                    <td class="end-time-column"></td>
+                    <td>
+                        <form action="/delete-current-session" method="post" style="display: inline;">
+                            <input type="hidden" name="session_id" value="{{ session.id }}">
+                            <button type="submit">Terminate Session</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

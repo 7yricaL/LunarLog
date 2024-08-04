@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Date</title>
+</head>
+<body>
+    <h1>Select a Date</h1>
+    <ul>
+        {% for session in sessions %}
+        <li>
+            {{ session.date }}
+            <form action="/get-certificate" method="post" style="display: inline;">
+                <input type="hidden" name="name" value="{{ name }}">
+                <input type="hidden" name="date" value="{{ session.date }}">
+                <button type="submit">Get Certificate</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
