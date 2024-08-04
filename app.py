@@ -105,79 +105,109 @@ def admin():
 
 @app.route('/add-session')
 def add_session_page():
-    conn = get_db_connection()
-    current_sessions = conn.execute('''
-        SELECT current_sessions.id, volunteers.name, current_sessions.date, current_sessions.start_time
-        FROM current_sessions
-        JOIN volunteers ON current_sessions.volunteer_id = volunteers.id
-    ''').fetchall()
-    conn.close()
-    return render_template('add_session.html', current_sessions=current_sessions)
+    try:
+        conn = get_db_connection()
+        current_sessions = conn.execute('''
+            SELECT current_sessions.id, volunteers.name, current_sessions.date, current_sessions.start_time
+            FROM current_sessions
+            JOIN volunteers ON current_sessions.volunteer_id = volunteers.id
+        ''').fetchall()
+        conn.close()
+        return render_template('add_session.html', current_sessions=current_sessions)
+    except Exception as e:
+        app.logger.error(f"Error on /add-session page: {e}")
+        app.logger.error(traceback.format_exc())
+        return "Internal Server Error", 500
 
 @app.route('/add-session', methods=['POST'])
 def add_session():
-    volunteer_name = request.form['volunteer_name'].strip().lower()
-    date = request.form['date']
-    start_time = request.form['start_time']
-    end_time = request.form['end_time']
-    conn = get_db_connection()
-    volunteer = conn.execute('SELECT id FROM volunteers WHERE LOWER(name) = ?', (volunteer_name,)).fetchone()
-    if not volunteer:
-        conn.execute('INSERT INTO volunteers (name) VALUES (?)', (volunteer_name,))
-        conn.commit()
+    try:
+        volunteer_name = request.form['volunteer_name'].strip().lower()
+        date = request.form['date']
+        start_time = request.form['start_time']
+        end_time = request.form['end_time']
+        conn = get_db_connection()
         volunteer = conn.execute('SELECT id FROM volunteers WHERE LOWER(name) = ?', (volunteer_name,)).fetchone()
-    
-    if end_time:
-        conn.execute('INSERT INTO sessions (volunteer_id, date, start_time, end_time) VALUES (?, ?, ?, ?)', (volunteer['id'], date, start_time, end_time))
-    else:
-        conn.execute('INSERT INTO current_sessions (volunteer_id, date, start_time) VALUES (?, ?, ?)', (volunteer['id'], date, start_time))
-    
-    conn.commit()
-    conn.close()
-    return redirect(url_for('add_session_page'))
+        if not volunteer:
+            conn.execute('INSERT INTO volunteers (name) VALUES (?)', (volunteer_name,))
+            conn.commit()
+            volunteer = conn.execute('SELECT id FROM volunteers WHERE LOWER(name) = ?', (volunteer_name,)).fetchone()
+        
+        if end_time:
+            conn.execute('INSERT INTO sessions (volunteer_id, date, start_time, end_time) VALUES (?, ?, ?, ?)', (volunteer['id'], date, start_time, end_time))
+        else:
+            conn.execute('INSERT INTO current_sessions (volunteer_id, date, start_time) VALUES (?, ?, ?)', (volunteer['id'], date, start_time))
+        
+        conn.commit()
+        conn.close()
+        return redirect(url_for('add_session_page'))
+    except Exception as e:
+        app.logger.error(f"Error in /add-session route: {e}")
+        app.logger.error(traceback.format_exc())
+        return "Internal Server Error", 500
 
 @app.route('/complete-session', methods=['POST'])
 def complete_session():
-    session_id = request.form['session_id']
-    end_time = request.form['end_time']
-    conn = get_db_connection()
-    current_session = conn.execute('SELECT * FROM current_sessions WHERE id = ?', (session_id,)).fetchone()
-    if current_session:
-        conn.execute('INSERT INTO sessions (volunteer_id, date, start_time, end_time) VALUES (?, ?, ?, ?)', 
-                     (current_session['volunteer_id'], current_session['date'], current_session['start_time'], end_time))
-        conn.execute('DELETE FROM current_sessions WHERE id = ?', (session_id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('add_session_page'))
+    try:
+        session_id = request.form['session_id']
+        end_time = request.form['end_time']
+        conn = get_db_connection()
+        current_session = conn.execute('SELECT * FROM current_sessions WHERE id = ?', (session_id,)).fetchone()
+        if current_session:
+            conn.execute('INSERT INTO sessions (volunteer_id, date, start_time, end_time) VALUES (?, ?, ?, ?)', 
+                        (current_session['volunteer_id'], current_session['date'], current_session['start_time'], end_time))
+            conn.execute('DELETE FROM current_sessions WHERE id = ?', (session_id,))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('add_session_page'))
+    except Exception as e:
+        app.logger.error(f"Error in /complete-session route: {e}")
+        app.logger.error(traceback.format_exc())
+        return "Internal Server Error", 500
 
 @app.route('/delete-session', methods=['POST'])
 def delete_session():
-    session_id = request.form['session_id']
-    conn = get_db_connection()
-    conn.execute('DELETE FROM sessions WHERE id = ?', (session_id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('admin'))
+    try:
+        session_id = request.form['session_id']
+        conn = get_db_connection()
+        conn.execute('DELETE FROM sessions WHERE id = ?', (session_id,))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('admin'))
+    except Exception as e:
+        app.logger.error(f"Error in /delete-session route: {e}")
+        app.logger.error(traceback.format_exc())
+        return "Internal Server Error", 500
 
 @app.route('/delete-current-session', methods=['POST'])
 def delete_current_session():
-    session_id = request.form['session_id']
-    conn = get_db_connection()
-    conn.execute('DELETE FROM current_sessions WHERE id = ?', (session_id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('admin'))
+    try:
+        session_id = request.form['session_id']
+        conn = get_db_connection()
+        conn.execute('DELETE FROM current_sessions WHERE id = ?', (session_id,))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('admin'))
+    except Exception as e:
+        app.logger.error(f"Error in /delete-current-session route: {e}")
+        app.logger.error(traceback.format_exc())
+        return "Internal Server Error", 500
 
 @app.route('/delete-volunteer', methods=['POST'])
 def delete_volunteer():
-    volunteer_id = request.form['volunteer_id']
-    conn = get_db_connection()
-    conn.execute('DELETE FROM volunteers WHERE id = ?', (volunteer_id,))
-    conn.execute('DELETE FROM sessions WHERE volunteer_id = ?', (volunteer_id,))
-    conn.execute('DELETE FROM current_sessions WHERE volunteer_id = ?', (volunteer_id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('admin'))
+    try:
+        volunteer_id = request.form['volunteer_id']
+        conn = get_db_connection()
+        conn.execute('DELETE FROM volunteers WHERE id = ?', (volunteer_id,))
+        conn.execute('DELETE FROM sessions WHERE volunteer_id = ?', (volunteer_id,))
+        conn.execute('DELETE FROM current_sessions WHERE volunteer_id = ?', (volunteer_id,))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('admin'))
+    except Exception as e:
+        app.logger.error(f"Error in /delete-volunteer route: {e}")
+        app.logger.error(traceback.format_exc())
+        return "Internal Server Error", 500
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
