@@ -1,8 +1,10 @@
-from flask import Flask, request, render_template, redirect, url_for
+import os
+from flask import Flask, request, render_template, redirect, url_for, session
 import sqlite3
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Use environment variable for secret key
 
 def get_db_connection():
     conn = sqlite3.connect('database.db')
@@ -64,18 +66,29 @@ def get_certificate():
 
     return render_template('certificate.html', name=formatted_name, date=date, hours=total_hours)
 
-@app.route('/admin')
+@app.route('/admin', methods=['GET', 'POST'])
 def admin():
-    conn = get_db_connection()
-    volunteers = conn.execute('SELECT * FROM volunteers').fetchall()
-    sessions = conn.execute('SELECT * FROM sessions').fetchall()
-    current_sessions = conn.execute('''
-        SELECT current_sessions.id, volunteers.name, current_sessions.date, current_sessions.start_time
-        FROM current_sessions
-        JOIN volunteers ON current_sessions.volunteer_id = volunteers.id
-    ''').fetchall()
-    conn.close()
-    return render_template('admin.html', volunteers=volunteers, sessions=sessions, current_sessions=current_sessions)
+    if request.method == 'POST':
+        passkey = request.form['passkey']
+        if passkey == '12345':
+            session['admin_logged_in'] = True
+            return redirect(url_for('admin'))
+        else:
+            return render_template('admin_login.html', error='Invalid passkey')
+    elif request.method == 'GET':
+        if 'admin_logged_in' in session:
+            conn = get_db_connection()
+            volunteers = conn.execute('SELECT * FROM volunteers').fetchall()
+            sessions = conn.execute('SELECT * FROM sessions').fetchall()
+            current_sessions = conn.execute('''
+                SELECT current_sessions.id, volunteers.name, current_sessions.date, current_sessions.start_time
+                FROM current_sessions
+                JOIN volunteers ON current_sessions.volunteer_id = volunteers.id
+            ''').fetchall()
+            conn.close()
+            return render_template('admin.html', volunteers=volunteers, sessions=sessions, current_sessions=current_sessions)
+        else:
+            return render_template('admin_login.html')
 
 @app.route('/add-session')
 def add_session_page():
